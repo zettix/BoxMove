@@ -322,7 +322,10 @@ public class RocketHandler {
     
     public JsonObject createTerrainTileMessage(String tilename) {
         Tile t = terrainManager.GetTile(tilename);
-        if (t == null) return null;
+        if (t == null) {
+            System.out.println("Ask for null tilename, get null json.");
+            return null;
+        }
         JsonProvider provider = JsonProvider.provider();
         JsonObject addMessage = provider.createObjectBuilder()
                 .add("msg_type", "tile")

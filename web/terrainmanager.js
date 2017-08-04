@@ -6,6 +6,7 @@
 
 /* global THREE */
 /* global clock */
+/* global use_wireframe */
 
 var tankette = tankette = tankette || {};
 
@@ -125,7 +126,9 @@ tankette.TerrainManager = function(scene) {
             tex.wrapS = THREE.ClampToEdgeWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
             var mat = new THREE.MeshBasicMaterial( {map: tex } );
-            //mat.wireframe = true;
+            if (use_wireframe === true) {
+              mat.wireframe = true;
+            }
             var mesh = new THREE.Mesh( geo, mat );
             group.add(mesh);
             scene.add(group );

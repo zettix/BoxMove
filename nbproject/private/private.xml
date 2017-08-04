@@ -4,6 +4,10 @@
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
             <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/rocketsocket/RocketHandler.java</file>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/web/websocket.js</file>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/web/playermanager.js</file>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/web/main.js</file>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/web/terrainmanager.js</file>
             <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/players/HitboxHandler.java</file>
         </group>
     </open-files>

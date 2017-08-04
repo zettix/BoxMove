@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -56,6 +57,7 @@ public final class TerrainManager {
    private float yTileWidth = 0.0f;
    private float xTilesPerDim = 0.0f;
    private float yTilesPerDim = 0.0f;
+   private DataBaseHandler dataBaseHandler;
    
    public TerrainManager() {
        this(100.0f, 100.0f);
@@ -69,7 +71,7 @@ public final class TerrainManager {
 
    public String GetShortName(int ax, int ay) {
      //System.out.println("Getting shortie for " + ax + " and " + ay);
-     if (ax < 0 || ay < 0 || ax >= xTileCount || ay >= yTileCount) {
+     if (ax < 0 || ay < 0 || ax > xTileCount || ay > yTileCount) {
          // System.out.println("I don't think so! " + ax + " limit " + xTileCount + " , " + ay + " limit " + yTileCount);
          return null;
      }
@@ -98,7 +100,15 @@ public final class TerrainManager {
       return;
     }
     */
+    
+    dataBaseHandler = new DataBaseHandler("/var/tmp/smallmars/smallmars.db");
+    dataBaseHandler.Connect();
+    dataBaseHandler.getManifest();
+    int dx = dataBaseHandler.getX();
+    int dy = dataBaseHandler.getY();
+    System.out.println("Database Loaded with X: " + dx + " and Y: " + dy );
     System.out.println("Loading the terrain manager");
+    /* 
     String manifest = RESOURCE_PATH + "/" + MANIFEST;
     InputStream stream = TerrainManager.class.getClassLoader().getResourceAsStream(manifest);
     if (stream == null) {
@@ -135,16 +145,27 @@ public final class TerrainManager {
     // big fat assumption that the data started at 0.
     xTileCount++;
     yTileCount++;
+    */
+    xTileCount = dx;
+    yTileCount = dy;
     xTileWidth = (float) xDim / (float) (xTileCount); // start w/ 0
     yTileWidth = (float) yDim / (float) (yTileCount); // start w/ 0
     xTilesPerDim =  (xTileCount) / (xDim + x);
     yTilesPerDim =  (yTileCount) / (yDim + y);
     System.out.println(GetStatus());
   }
-
+   
   protected Tile FullLoad(String tilename) {
+    boolean dbLoad = true;
+    
     System.out.println("Fulll load of " + tilename);
-    String path = datapaths.get(tilename);
+    String path;
+    if (datapaths.containsKey(tilename)) {
+      path = datapaths.get(tilename);
+    } else {
+      path = "data_" + tilename + ".dat";
+      datapaths.put(tilename, path);
+    }
     String fullpath = RESOURCE_PATH + "/" + path;
     Matcher m = DATA_RE.matcher(path);
     if (m.matches() == true)  {
@@ -156,8 +177,12 @@ public final class TerrainManager {
       //        String url, String name, float[] indata)
       String url = String.format("/BoxMove/images/image_%d_%d.jpg", px, py);
       try {
-        //DataInputStream f = new DataInputStream(
-        InputStream stream = TerrainManager.class.getClassLoader().getResourceAsStream(fullpath);
+        InputStream stream;
+        if (dbLoad) {
+            stream = new ByteArrayInputStream(dataBaseHandler.getBlob("terrain", path));
+        } else {
+            stream = TerrainManager.class.getClassLoader().getResourceAsStream(fullpath);
+        }
         DataInputStream f = new DataInputStream(stream);
         int count = f.readInt();
         int unusedYcount = f.readInt();
@@ -210,16 +235,20 @@ public final class TerrainManager {
     //System.out.println("Getting tile name: " + tilename);
     //System.out.println("All keys: " + tiles.keySet());
     // System.out.println("And is this key: " + tilename + " in the keyset?" + tiles.containsKey(tilename) + " is your ans");
+    if (tilename == null) return null;
+    
+    Tile t = null;
     if (tiles.containsKey(tilename)) {
-      Tile t = tiles.get(tilename);
-      // System.out.println("here is teh tiule: " + t);
-      if (t == null) {
-        return FullLoad(tilename);
-      } else {
-        return t;
-      }
+      t = tiles.get(tilename);
+    } else {
+      tiles.put(tilename, t);
     }
-    return null;
+    // System.out.println("here is teh tiule: " + t);
+    if (t == null) {
+        return FullLoad(tilename);
+    } else {
+        return t;
+    }
   }
 
   public float GetHeight(float xi, float yi) {

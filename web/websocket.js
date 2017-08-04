@@ -169,8 +169,8 @@ function onMessage(event) {
 
 var doggy = 0;
 function pushButtons() {
-    if (doggy % 1000 === 3) {
-          console.log("needed: " + terrainManager.Needed());
+    if (doggy % 1000 === -3) {
+          console.log("needed: " + terrainManager.needs);
     }
     doggy += 1;
     if (doggy > 10000) {

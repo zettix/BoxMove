@@ -86,6 +86,8 @@ ResetCamera();
 var use_chase_cam = false;
 var can_change_cam = true;
 var update_timeout = 0;
+var can_wireframe = false;
+var use_wireframe = false;
 
 var pushBox = function() {
     // I have no idea what this does.
@@ -94,17 +96,37 @@ var pushBox = function() {
 var Update = function() {
   var update_delta = clock.getDelta();
   update_timeout += update_delta;
-  if (update_timeout > 6) {
+  if (update_timeout > 16) {
       update_timeout = 0;
       console.log("X: " + chasecam.target.group.position.x + " Y: " + chasecam.target.group.position.y +  " Z: " + chasecam.target.group.position.z);
       console.log("Players: " + playerManager.NumPlayers());
       console.log("Turdles: " + turdleManager.NumTurdles());
       console.log("Terrain: " + terrainManager.Summary());
+      console.log("Wireframe: " + use_wireframe);
       pushBox();
   }
   //controls.update(update_delta);
+  WireFrameUpdate();
   pushButtons(clock.elapsedTime);
   
+};
+
+// all this jazz is to make a T flip flop.
+var WireFrameUpdate = function() {
+    if (controls.toggleWireFrame === true) {
+        if (can_wireframe === true) {
+            can_wireframe = false;
+            if (use_wireframe === true) {
+                // disable wireframe;
+                use_wireframe = false;
+            } else {
+                // enable wireframe
+                use_wireframe = true;
+            }
+        }
+    } else {
+        can_wireframe = true;
+    }
 };
 
 var CamUpdate = function() {
