@@ -3,12 +3,10 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/terrain/DataBaseHandler.java</file>
             <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/rocketsocket/RocketHandler.java</file>
-            <file>file:/home/sean/NetBeansProjects/BoxMove/web/websocket.js</file>
-            <file>file:/home/sean/NetBeansProjects/BoxMove/web/playermanager.js</file>
-            <file>file:/home/sean/NetBeansProjects/BoxMove/web/main.js</file>
-            <file>file:/home/sean/NetBeansProjects/BoxMove/web/terrainmanager.js</file>
-            <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/players/HitboxHandler.java</file>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/terrain/TerrainManager.java</file>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/rocketsocket/ImageServelet.java</file>
         </group>
     </open-files>
 </project-private>

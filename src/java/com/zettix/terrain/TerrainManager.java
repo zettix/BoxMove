@@ -176,6 +176,9 @@ public final class TerrainManager {
       //  public Tile(float x, float y, float z, float rx, float ry, int c,
       //        String url, String name, float[] indata)
       String url = String.format("/BoxMove/images/image_%d_%d.jpg", px, py);
+      // With the database endpoint:
+      //     localhost:8080/BoxMove/ImageServelet?image=image_0_9.jpg
+      url = String.format("/BoxMove/ImageServelet?image=image_%d_%d.jpg", px, py);
       try {
         InputStream stream;
         if (dbLoad) {
