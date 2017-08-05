@@ -2,7 +2,7 @@
 Precursor to Tankette, Java / Javascript / ThreeJS / WebGL / Mars / Terrain Server / GJK Intersection / multiplayer experience.
 
 So you like graphics.  You want to write a game.  3D is a passion.  You gravitate toward java, if it is a fable, this
-has the nicest backstory.  The giants, pixies, irrascable curmudgeons, and dangerously boring people made java IDEs
+has the nicest backstory.  The giants, pixies, irascible curmudgeons, and dangerously boring people made java IDEs
 just glorious. It's candy.  There's way too much of it.
 
 I wanted to write a terrain server since the concept of running around virtually gripped me.  The limit of files in a
