@@ -16,6 +16,7 @@ package com.zettix.terrain;
 // List<names> getTilesForPoint(float x, float y);
 //  be lazy.  Do not load unless asked.
 
+import com.zettix.rocketsocket.RocketConstants;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -34,6 +35,8 @@ import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Scanner;
 import org.apache.log4j.*;
 
@@ -46,6 +49,7 @@ public final class TerrainManager {
    private final Logger LOG = Logger.getLogger(TerrainManager.class);
    private final Map<String, Tile> tiles = new HashMap<>();
    private final Map<String, String> datapaths = new HashMap<>();
+   private final Queue<String> tileQueue = new LinkedList<>();
    private final float x = 0.0f;
    private final float y = 0.0f;
    private final float z = 0.0f;
@@ -58,6 +62,7 @@ public final class TerrainManager {
    private float xTilesPerDim = 0.0f;
    private float yTilesPerDim = 0.0f;
    private DataBaseHandler dataBaseHandler;
+   private final int maxTiles = 256;  // tune this.
    
    public TerrainManager() {
        this(100.0f, 100.0f);
@@ -101,7 +106,9 @@ public final class TerrainManager {
     }
     */
     
-    dataBaseHandler = new DataBaseHandler("/var/tmp/smallmars/smallmars.db");
+    dataBaseHandler = new DataBaseHandler(
+            RocketConstants.getTerrainDemPath(
+                    RocketConstants.getDefaultTerrainKey()));
     dataBaseHandler.Connect();
     dataBaseHandler.getManifest();
     int dx = dataBaseHandler.getX();
@@ -155,10 +162,28 @@ public final class TerrainManager {
     System.out.println(GetStatus());
   }
    
+  private void FreeTiles(int numToFree) {
+      int counter = numToFree;
+      do {
+          String key = tileQueue.poll();
+          if (null == key) {
+              break;
+          }
+          datapaths.remove(key);
+          tiles.remove(key);
+          counter--;
+      } while (counter > 0);
+      System.out.println("Freed " + numToFree + " Tiles from TileServer");
+  }
+   
   protected Tile FullLoad(String tilename) {
     boolean dbLoad = true;
-    
-    System.out.println("Fulll load of " + tilename);
+
+    int numTiles = datapaths.size();
+    if (numTiles > maxTiles) {
+        FreeTiles(25);
+    }
+    System.out.println("Full load of " + tilename + " For a toal of tiles: " + numTiles);
     String path;
     if (datapaths.containsKey(tilename)) {
       path = datapaths.get(tilename);
@@ -175,10 +200,10 @@ public final class TerrainManager {
       float yy = (float) (py) * yTileWidth + y;
       //  public Tile(float x, float y, float z, float rx, float ry, int c,
       //        String url, String name, float[] indata)
-      String url = String.format("/BoxMove/images/image_%d_%d.jpg", px, py);
+      //String url = String.format("/BoxMove/images/image_%d_%d.jpg", px, py);
       // With the database endpoint:
       //     localhost:8080/BoxMove/ImageServelet?image=image_0_9.jpg
-      url = String.format("/BoxMove/ImageServelet?image=image_%d_%d.jpg", px, py);
+      String url = String.format("/BoxMove/ImageServelet?image=image_%d_%d.jpg", px, py);
       try {
         InputStream stream;
         if (dbLoad) {
@@ -192,7 +217,9 @@ public final class TerrainManager {
         // System.out.println("Loading tile: " + tilename + " c: " + count);
         float[] d = new float[count * count];
         for (int j = 0; j < count * count; j++) {
-          d[j] = (float) f.readFloat() * 0.9f;  // scaled down?
+            // Important change.  Database is now int16s.
+            d[j] = ((float) f.readShort()) * 0.0005f;
+            // d[j] = (float) f.readFloat() * 0.9f;  // scaled down?
         }
         /* System.out.println("  xx:" + xx +
                            "\n  yy:" + yy +
@@ -206,6 +233,7 @@ public final class TerrainManager {
         Tile t = new Tile(xx, yy, z, xTileWidth, yTileWidth, count, url,
                           tilename, d);
         tiles.put(tilename, t);
+        tileQueue.add(tilename);
         return t;
       } catch (IOException e) {
         System.out.println("Could not get tile! " + e);

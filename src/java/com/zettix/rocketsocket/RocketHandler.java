@@ -45,7 +45,7 @@ public class RocketHandler {
     private final Random rnd = new Random();
     private final long delayseconds = 2l;
     private final long period_ms = 100l;
-    private final TerrainManager terrainManager = new TerrainManager(2000, 1000);
+    private final TerrainManager terrainManager = new TerrainManager(20000, 10000);
     
     boolean doneloop = true;
     int doneloop_count = 0;
@@ -338,7 +338,7 @@ public class RocketHandler {
     private JsonObject createTerrainMessage(Player p) {
         float x = (float) p.getX();
         float y = (float) p.getZ();
-        int radius = 3;
+        int radius = 4;
         JsonProvider provider = JsonProvider.provider();
         JsonArrayBuilder jpatches = provider.createArrayBuilder();
         List<String> tpatches = terrainManager.GetTileNamesFor(x, y, radius);

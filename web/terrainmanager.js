@@ -73,9 +73,37 @@ tankette.TerrainManager = function(scene) {
         }  // cannot delete from list while iterating, I don't think.
         for (var me = 0; me < kills.length; me++) {
             console.log("By tile " + kills[me]);
-            delete tiles[kills[me].group];
+            this.doDispose(tiles[kills[me]]);
             delete tiles[kills[me]];
         }
+    };
+    
+    // ripped from https://github.com/mrdoob/three.js/issues/5175
+    // dealloc ram in a terrain server is critical.
+    this.doDispose = function (obj) {
+        if (obj !== null)
+        {
+            for (var i = 0; i < obj.children.length; i++)
+            {
+                this.doDispose(obj.children[i]);
+            }
+            if (obj.geometry)
+            {
+                obj.geometry.dispose();
+                obj.geometry = undefined;
+            }
+            if (obj.material)
+            {
+                if (obj.material.map)
+                {
+                    obj.material.map.dispose();
+                    obj.material.map = undefined;
+                }
+                obj.material.dispose();
+                obj.material = undefined;
+            }
+        }
+        obj = undefined;
     };
     
     this.Summary = function() {

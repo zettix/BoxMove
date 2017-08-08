@@ -35,6 +35,7 @@ public class ImageServelet extends HttpServlet {
     
     private int requestCount = 0;
     private DataBaseHandler db = null;
+    private String table = null;
     
     public void SetDb(DataBaseHandler dbin) {
         System.out.println("Setting DB for Image Server");
@@ -43,8 +44,10 @@ public class ImageServelet extends HttpServlet {
     
     
     private void ConnectToDataBase() {
-        db = new DataBaseHandler("/var/tmp/smallmars/smallmarsimages.db");
+        String key = RocketConstants.getDefaultTerrainKey();
+        db = new DataBaseHandler(RocketConstants.getTerrainTexturePath(key));
         db.Connect();
+        this.table = RocketConstants.getTextureTable(key);
     }
     
     
@@ -60,7 +63,7 @@ public class ImageServelet extends HttpServlet {
              //response.setContentType("image/jpeg");
              val = query.substring(query.indexOf("image=") + 6);
              if (db != null) {
-                 byte[] result = db.getBlob("images", val);
+                 byte[] result = db.getBlob(this.table, val);
                  int isize = result.length;
                  if (isize > 0) {
                      response.setContentType("image/jpeg");
