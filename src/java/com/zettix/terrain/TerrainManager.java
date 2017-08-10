@@ -62,7 +62,7 @@ public final class TerrainManager {
    private float xTilesPerDim = 0.0f;
    private float yTilesPerDim = 0.0f;
    private DataBaseHandler dataBaseHandler;
-   private final int maxTiles = 256;  // tune this.
+   private final int maxTiles = 1056;  // tune this.
    
    public TerrainManager() {
        this(100.0f, 100.0f);
@@ -218,7 +218,7 @@ public final class TerrainManager {
         float[] d = new float[count * count];
         for (int j = 0; j < count * count; j++) {
             // Important change.  Database is now int16s.
-            d[j] = ((float) f.readShort()) * 0.0005f;
+            d[j] = ((float) f.readShort()) * 0.005f;
             // d[j] = (float) f.readFloat() * 0.9f;  // scaled down?
         }
         /* System.out.println("  xx:" + xx +

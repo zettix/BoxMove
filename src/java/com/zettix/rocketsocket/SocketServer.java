@@ -59,6 +59,10 @@ public class SocketServer {
             String msg = jsonMessage.getString("msg_type");
             if (null != msg) switch (msg) {
                 case "but":
+                    if (!session.isOpen()) {
+                        System.out.println("I've never heard of this session!" + session.toString());
+                        return;
+                    }
                     String playerid = session.getId();
                     Player p = sessionHandler.getPlayerById(playerid);
                     /*

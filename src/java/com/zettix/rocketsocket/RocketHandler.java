@@ -15,14 +15,14 @@ import com.zettix.terrain.TerrainManager;
 import com.zettix.terrain.Tile;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
-import org.apache.log4j.*;
+import java.util.concurrent.ConcurrentHashMap;
+//import org.apache.log4j.*;
 import javax.enterprise.context.ApplicationScoped;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -34,20 +34,19 @@ import javax.json.spi.JsonProvider;
  */
 @ApplicationScoped
 public class RocketHandler {
-    private final Set sessions = new HashSet<>();
-    private final Set players = new HashSet<>();
-    private final Map<Player, Session> playerMap = new HashMap<>();
+    private final Map<Session, Boolean> sessions;
+    private final Map<Player, Session> playerMap;
+    private final Map<String, Player> idToPlayerMap;
     private final Set turdles = new HashSet<>();
-    
-    private final Timer timer = new Timer();
     private final HitboxHandler hitboxHandler;
-    // Because random.
-    private final Random rnd = new Random();
+    private final Timer timer = new Timer();
+    private final Random rnd = new Random(); // Because random.
     private final long delayseconds = 2l;
     private final long period_ms = 100l;
     private final TerrainManager terrainManager = new TerrainManager(20000, 10000);
     
     boolean doneloop = true;
+    int loopcount = 0;
     int doneloop_count = 0;
     int turdle_serial = 0;
     // private static final Logger LOG = Logger.getLogger(
@@ -56,7 +55,20 @@ public class RocketHandler {
     //private static final Logger LOG = LogManager.getLogger(RocketHandler.class.getName());
     
     public RocketHandler() {
+        this.sessions = new ConcurrentHashMap<>();
+        this.playerMap = new ConcurrentHashMap<>();
+        this.idToPlayerMap = new ConcurrentHashMap<>();
         hitboxHandler = new HitboxHandler();
+        StringBuffer sb = new StringBuffer("Hello I am a rocket handler! ")
+                    .append("I am: ");
+                    StackTraceElement[] stack = new Throwable().getStackTrace();
+                    for (StackTraceElement elem : stack) {
+                        sb.append("\n")
+                                .append(elem.getFileName())
+                                .append(" ")
+                                .append(elem.getLineNumber());
+                    }
+        System.out.println(sb.toString());
         this.ScheduleRunMe();
     }
     
@@ -68,6 +80,25 @@ public class RocketHandler {
         // terrain.
         // explosions.
         //score, etc.
+        loopcount++;
+        if (loopcount > 1000) {
+            StringBuffer sb = new StringBuffer("RocketHandler Summary!\n")
+                    .append("I am: ");
+                    StackTraceElement[] stack = new Throwable().getStackTrace();
+                    for (StackTraceElement elem : stack) {
+                        sb.append("\n")
+                                .append(elem.getFileName())
+                                .append(" ")
+                                .append(elem.getLineNumber());
+                    }                    
+                    sb.append("\nPlayer count:")
+                    .append(playerMap.size())
+                    .append("\n and Terrain:")
+                    .append(terrainManager.toString());
+            
+            System.out.println(sb.toString());
+            loopcount = 0;
+        }
         if (doneloop) {
            doneloop = false;
            updatePlayers();
@@ -81,6 +112,7 @@ public class RocketHandler {
             }
         }
     }
+    
     class MainLoopTimer extends TimerTask {
         @Override
         public void run() {
@@ -89,6 +121,11 @@ public class RocketHandler {
     }
     
     private void ScheduleRunMe() {
+        
+        /* @param task   task to be scheduled.
+           @param delay  delay in milliseconds before task is to be executed.
+           @param period time in milliseconds between successive task executions
+        */
         timer.schedule(new MainLoopTimer(), delayseconds * 1000, 10);
     }
     
@@ -98,7 +135,7 @@ public class RocketHandler {
     
     public void addSession(Session session) {
         synchronized (sessions)  {
-            sessions.add(session);
+            sessions.put(session, true);
         }
         addPlayer(session);
         sendToSession(session, createGamePacket());
@@ -114,6 +151,8 @@ public class RocketHandler {
             sessions.remove(session);
             removePlayer(session.getId());
             // Logger.getLogger(RocketHandler.class.getName()).log(Level.INFO, ex);
+        } catch (NullPointerException e) {
+            System.out.println("Null pointer exception in sendToSession, probably disconnected.");
         }
     }
     
@@ -124,17 +163,14 @@ public class RocketHandler {
         */ 
         String playerid = session.getId();
         removePlayer(playerid);
-        synchronized(sessions) {
-            sessions.remove(session);
-        }
+        sessions.remove(session);
+        
         JsonObject delMe = createDelMessage(playerid);
         sendToAllConnectedSessions(delMe);
     }
     
     public List getPlayers() {
-        synchronized (players) {
-          return new ArrayList<>(players);
-        }
+      return new ArrayList<>(playerMap.keySet());
     }
 
     public void addPlayer(Session s) {
@@ -146,9 +182,9 @@ public class RocketHandler {
         p.setYr(rnd.nextDouble() * 3.14f);
         p.setZr(0.0f);
         p.setId(s.getId());
-        synchronized (players) {
-            players.add(p);
+        synchronized (playerMap) {
             playerMap.put(p, s);
+            idToPlayerMap.put(p.getId(), p);
             hitboxHandler.AddPlayer(p);
         }
     }
@@ -179,23 +215,38 @@ public class RocketHandler {
     }
     
     public void removePlayer(String id) {
-        synchronized (players) {
+        synchronized (playerMap) {
           Player p = getPlayerById(id);
-          playerMap.remove(p);
-          players.remove(p);
+          try {
+            playerMap.remove(p);
+          } catch (NullPointerException e) {
+            System.out.println("Concurrent Exception Probably!!!");
+          }
+          try {
+            idToPlayerMap.remove(p.getId());
+          } catch (NullPointerException e) {
+            System.out.println("Concurrent Exception Probably!!!");
+          }
           hitboxHandler.DelPlayer(id);
         }
     }
 
-    // TODO(sean) fix this with an Id() to Player object map.
     public Player getPlayerById(String id) {
-        synchronized (players) {
+       /* synchronized (playerMap) {
             for (Iterator it = players.iterator(); it.hasNext();) {
                 Player p = (Player) it.next();
                 if (p.getId().equals(id)) {
                     return p;
                 }
             }
+        // TODO(sean) fix this with an Id() to Player object map.
+        } */
+        try  {
+          if (idToPlayerMap.containsKey(id)) {
+            return idToPlayerMap.get(id);
+          }
+        } catch (NullPointerException e) {
+            System.out.println("getPlayerById null pointer exception!!" + id);
         }
         return null;
     }
@@ -213,9 +264,8 @@ public class RocketHandler {
     private JsonObject createGamePacket() {
         JsonProvider provider = JsonProvider.provider();
         JsonArrayBuilder playerlist = provider.createArrayBuilder();
-        synchronized (players) {
-            for (Iterator it = players.iterator(); it.hasNext();) {
-                Player p = (Player) it.next();
+        synchronized (playerMap) {
+            for (Player p : playerMap.keySet()) {
                 int collision = 0;
                 if (hitboxHandler.IsHit(p)) {
                     collision = 1;
@@ -338,7 +388,7 @@ public class RocketHandler {
     private JsonObject createTerrainMessage(Player p) {
         float x = (float) p.getX();
         float y = (float) p.getZ();
-        int radius = 4;
+        int radius = 8;
         JsonProvider provider = JsonProvider.provider();
         JsonArrayBuilder jpatches = provider.createArrayBuilder();
         List<String> tpatches = terrainManager.GetTileNamesFor(x, y, radius);
@@ -381,29 +431,22 @@ public class RocketHandler {
     
     
     private void updatePlayers() {
-        synchronized (players) {
-            for (Iterator it = players.iterator(); it.hasNext();) {
-                Player p = (Player) it.next();
+        Set<Player> playerSet = new HashSet<>(playerMap.keySet());
+            for (Player p : playerSet) {
                 updatePlayerLocation(p);
                 if (p.toggleturdle) {
                 addTurdle(p.getId());
                 }
             }
-        }
         DetectCollisions();
-        synchronized (players) {
-          for (Iterator it = players.iterator(); it.hasNext();) {
-                Player p = (Player) it.next();
+            for (Player p : playerSet) {
                 if (hitboxHandler.IsHit(p)) {
                     MoveUndo(p);
                 }
             }
-        }
         updateTurdles();
         sendToAllConnectedSessions(createGamePacket());
-        synchronized (players) {
-            for (Iterator it = players.iterator(); it.hasNext();) {
-                Player p = (Player) it.next();
+            for (Player p : playerSet) {
                 if (p.moved || true){
                     JsonObject m = createTerrainMessage(p);
                     if (m != null) {
@@ -411,7 +454,6 @@ public class RocketHandler {
                     }
                 }
             }
-        }
     }
     
     public void updatePlayerLocation(Player p) {
@@ -461,11 +503,21 @@ public class RocketHandler {
     
     private void sendToAllConnectedSessions(JsonObject message) {
         if (message == null) return;
-        synchronized (sessions) {
-            for (Iterator it = sessions.iterator(); it.hasNext();) {
-                Session session = (Session) it.next();
+        Set<Session> sessionSet = new HashSet<>(sessions.keySet());
+        for (Session session : sessionSet) {
+                /*Severe:   Exception in thread "Timer-2"
+Severe:   java.util.ConcurrentModificationException
+	at java.util.HashMap$HashIterator.nextNode(HashMap.java:1429)
+	at java.util.HashMap$KeyIterator.next(HashMap.java:1453)
+	at com.zettix.rocketsocket.RocketHandler.sendToAllConnectedSessions(RocketHandler.java:466)
+	at com.zettix.rocketsocket.RocketHandler.updatePlayers(RocketHandler.java:403)
+	at com.zettix.rocketsocket.RocketHandler.RunMe(RocketHandler.java:73)
+	at com.zettix.rocketsocket.RocketHandler.access$000(RocketHandler.java:36)
+	at com.zettix.rocketsocket.RocketHandler$MainLoopTimer.run(RocketHandler.java:87)
+	at java.util.TimerThread.mainLoop(Timer.java:555)
+	at java.util.TimerThread.run(Timer.java:505)*/
+                
                 sendToSession(session, message);
-            }
         }
     }
     

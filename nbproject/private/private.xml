@@ -4,8 +4,8 @@
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
             <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/terrain/Tile.java</file>
-            <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/terrain/DataBaseHandler.java</file>
             <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/rocketsocket/RocketHandler.java</file>
+            <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/rocketsocket/SocketServer.java</file>
             <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/terrain/TerrainManager.java</file>
             <file>file:/home/sean/NetBeansProjects/BoxMove/src/java/com/zettix/rocketsocket/ImageServelet.java</file>
             <file>file:/home/sean/NetBeansProjects/BoxMove/web/terrainmanager.js</file>
