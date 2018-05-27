@@ -77,7 +77,8 @@ public class SocketServer {
                     p.back = jsonMessage.getBoolean("B");
                     p.left = jsonMessage.getBoolean("L");
                     p.right = jsonMessage.getBoolean("R");
-                    p.toggleturdle = jsonMessage.getBoolean("T");                    
+                    p.toggleturdle = jsonMessage.getBoolean("T");    
+                    p.togglecrumb = jsonMessage.getBoolean("K"); // see: wasd.js, websocket.js:pushButtons
                     //sessionHandler.updatePlayerLocation(
                     //        sessionHandler.getPlayerById(playerid));
                     //sessionHandler.LogHits();

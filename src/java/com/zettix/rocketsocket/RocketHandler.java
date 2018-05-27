@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Set;
 import javax.websocket.Session;
 import com.zettix.players.Player;
+import com.zettix.players.Crumb;
 import com.zettix.players.Turdle;
 import com.zettix.terrain.TerrainManager;
 import com.zettix.terrain.Tile;
@@ -34,30 +35,29 @@ import javax.json.spi.JsonProvider;
  */
 @ApplicationScoped
 public class RocketHandler {
-    private final Map<Session, Boolean> sessions;
     private final Map<Player, Session> playerMap;
     private final Map<String, Player> idToPlayerMap;
-    private final Set turdles = new HashSet<>();
+    private final Set<Turdle> turdles = new HashSet<>();
+    private final Set<Crumb> crumbs = new HashSet<>();
     private final HitboxHandler hitboxHandler;
     private final Timer timer = new Timer();
     private final Random rnd = new Random(); // Because random.
     private final long delayseconds = 2l;
-    private final long period_ms = 100l;
-    private final TerrainManager terrainManager = new TerrainManager(20000, 10000);
-    
+    //private final TerrainManager terrainManager = new TerrainManager(20000, 10000);
+    private final TerrainManager terrainManager = new TerrainManager(3000, 3000);
     boolean doneloop = true;
     int loopcount = 0;
     int doneloop_count = 0;
     int turdle_serial = 0;
+    int crumb_serial = 0;
     // private static final Logger LOG = Logger.getLogger(
     //            RocketHandler.class.getName());
 
     //private static final Logger LOG = LogManager.getLogger(RocketHandler.class.getName());
     
     public RocketHandler() {
-        this.sessions = new ConcurrentHashMap<>();
-        this.playerMap = new ConcurrentHashMap<>();
-        this.idToPlayerMap = new ConcurrentHashMap<>();
+        playerMap = new ConcurrentHashMap<>();
+        idToPlayerMap = new ConcurrentHashMap<>();
         hitboxHandler = new HitboxHandler();
         StringBuffer sb = new StringBuffer("Hello I am a rocket handler! ")
                     .append("I am: ");
@@ -134,9 +134,6 @@ public class RocketHandler {
     }
     
     public void addSession(Session session) {
-        synchronized (sessions)  {
-            sessions.put(session, true);
-        }
         addPlayer(session);
         sendToSession(session, createGamePacket());
         Player p = getPlayerById(session.getId());
@@ -148,7 +145,6 @@ public class RocketHandler {
         try {
             session.getBasicRemote().sendText(message.toString());
         } catch (java.lang.IllegalStateException | IOException ex) {
-            sessions.remove(session);
             removePlayer(session.getId());
             // Logger.getLogger(RocketHandler.class.getName()).log(Level.INFO, ex);
         } catch (NullPointerException e) {
@@ -163,17 +159,19 @@ public class RocketHandler {
         */ 
         String playerid = session.getId();
         removePlayer(playerid);
-        sessions.remove(session);
-        
         JsonObject delMe = createDelMessage(playerid);
         sendToAllConnectedSessions(delMe);
     }
     
-    public List getPlayers() {
-      return new ArrayList<>(playerMap.keySet());
+    private List<Player> getPlayers() {
+        List<Player> result; 
+        synchronized(playerMap) {
+            result = new ArrayList<>(playerMap.keySet());
+        }
+      return result;
     }
 
-    public void addPlayer(Session s) {
+    private void addPlayer(Session s) {
         Player p = new Player();
         p.setX(rnd.nextDouble() * 10.0f);
         p.setY(0.0f);
@@ -189,7 +187,7 @@ public class RocketHandler {
         }
     }
     
-    public void addTurdle(String id) {
+    private void addTurdle(String id) {
         Player p = getPlayerById(id);
         if (p.moved) {
           p.movecount++;
@@ -207,14 +205,40 @@ public class RocketHandler {
           }
         }
     }
+
+    private void addCrumb(String id) {
+        Player p = getPlayerById(id);
+        if (p.moved) {
+          p.movecount++;
+          if (p.movecount > 5) {
+            Crumb t = new Crumb();
+            t.setId("C" + crumb_serial++);
+            t.setX(p.getX());
+            t.setY(p.getY());
+            t.setZ(p.getZ());
+            t.setXr(p.getXr());
+            t.setYr(p.getYr());
+            t.setZr(p.getZr());
+            crumbs.add(t);
+            p.movecount = 0;
+          }
+        }
+    }
+
+
+    private void removeCrumb(Crumb t) {
+        synchronized(crumbs) {
+          crumbs.remove(t);
+        }
+    }
     
-    public void removeTurdle(Turdle t) {
+    private void removeTurdle(Turdle t) {
         synchronized(turdles) {
           turdles.remove(t);
         }
     }
     
-    public void removePlayer(String id) {
+    private void removePlayer(String id) {
         synchronized (playerMap) {
           Player p = getPlayerById(id);
           try {
@@ -232,28 +256,31 @@ public class RocketHandler {
     }
 
     public Player getPlayerById(String id) {
-       /* synchronized (playerMap) {
-            for (Iterator it = players.iterator(); it.hasNext();) {
-                Player p = (Player) it.next();
-                if (p.getId().equals(id)) {
-                    return p;
-                }
+        synchronized (playerMap) {
+          try  {
+            if (idToPlayerMap.containsKey(id)) {
+              return idToPlayerMap.get(id);
             }
-        // TODO(sean) fix this with an Id() to Player object map.
-        } */
-        try  {
-          if (idToPlayerMap.containsKey(id)) {
-            return idToPlayerMap.get(id);
-          }
-        } catch (NullPointerException e) {
+          } catch (NullPointerException e) {
             System.out.println("getPlayerById null pointer exception!!" + id);
+          }
         }
         return null;
     }
 
-    public Turdle getTurdleById(String id) {
+    private Turdle getTurdleById(String id) {
         for (Iterator it = turdles.iterator(); it.hasNext();) {
             Turdle p = (Turdle) it.next();
+            if (p.getId().equals(id)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    private Crumb getCrumbById(String id) {
+        for (Iterator it = crumbs.iterator(); it.hasNext();) {
+            Crumb p = (Crumb) it.next();
             if (p.getId().equals(id)) {
                 return p;
             }
@@ -264,28 +291,31 @@ public class RocketHandler {
     private JsonObject createGamePacket() {
         JsonProvider provider = JsonProvider.provider();
         JsonArrayBuilder playerlist = provider.createArrayBuilder();
+        Set<Player> players;
         synchronized (playerMap) {
-            for (Player p : playerMap.keySet()) {
-                int collision = 0;
-                if (hitboxHandler.IsHit(p)) {
-                    collision = 1;
-                }
-                JsonObject pj = provider.createObjectBuilder()
-                    .add("id", p.getId())
-                    .add("x", p.getX())
-                    .add("y", p.getY())
-                    .add("z", p.getZ())
-                    .add("xr", p.getXr())
-                    .add("yr", p.getYr())
-                    .add("zr", p.getZr())
-                    .add("col", collision)                    
-                    .build();        
-                playerlist.add(pj);
-            }
+            players = playerMap.keySet();
         }
+        for (Player p : players) {
+            int collision = 0;
+            if (hitboxHandler.IsHit(p)) {
+                collision = 1;
+            }
+            JsonObject pj = provider.createObjectBuilder()
+                .add("id", p.getId())
+                .add("x", p.getX())
+                .add("y", p.getY())
+                .add("z", p.getZ())
+                .add("xr", p.getXr())
+                .add("yr", p.getYr())
+                .add("zr", p.getZr())
+                .add("col", collision)                    
+                .build();        
+            playerlist.add(pj);
+        }
+        
         JsonArrayBuilder turdlelist = provider.createArrayBuilder();
-        for (Iterator it = turdles.iterator(); it.hasNext();) {
-            Turdle p = (Turdle) it.next();
+        for (Iterator<Turdle> it = turdles.iterator(); it.hasNext();) {
+            Turdle p = it.next();
             JsonObject pj = provider.createObjectBuilder()
               .add("id", p.getId())
               .add("x", p.getX())
@@ -298,6 +328,22 @@ public class RocketHandler {
               .build();        
             turdlelist.add(pj);
         }
+
+        JsonArrayBuilder crumblist = provider.createArrayBuilder();
+        for (Iterator<Crumb> it = crumbs.iterator(); it.hasNext();) {
+            Crumb p = it.next();
+            JsonObject pj = provider.createObjectBuilder()
+              .add("id", p.getId())
+              .add("x", p.getX())
+              .add("y", p.getY())
+              .add("z", p.getZ())
+              .add("xr", p.getXr())
+              .add("yr", p.getYr())
+              .add("zr", p.getZr())
+              .build();        
+            crumblist.add(pj);
+        }
+
         JsonArrayBuilder dotlist = provider.createArrayBuilder();
         for (Dot p : hitboxHandler.dots) {
             JsonObject pj = provider.createObjectBuilder()
@@ -312,6 +358,7 @@ public class RocketHandler {
                 .add("msg_type", "V1")
                 .add("playerlist", playerlist)
                 .add("turdlelist", turdlelist)
+                .add("crumblist", crumblist)
                 .add("dotlist", dotlist)
                 .build();
         return packet;
@@ -386,9 +433,9 @@ public class RocketHandler {
     
     
     private JsonObject createTerrainMessage(Player p) {
-        float x = (float) p.getX();
-        float y = (float) p.getZ();
-        int radius = 8;
+        double x = (double) p.getX();
+        double y = (double) p.getZ();
+        int radius = 5;
         JsonProvider provider = JsonProvider.provider();
         JsonArrayBuilder jpatches = provider.createArrayBuilder();
         List<String> tpatches = terrainManager.GetTileNamesFor(x, y, radius);
@@ -410,7 +457,7 @@ public class RocketHandler {
         
         
     private void updateTurdles() {
-        Set removals = new HashSet<>();
+        Set<Turdle> removals = new HashSet<>();
         for (Iterator it = turdles.iterator(); it.hasNext();) {
             Turdle t = (Turdle) it.next();
             t.age++;
@@ -423,40 +470,65 @@ public class RocketHandler {
                 removals.add(t);
             }
         }
-        for (Iterator it = removals.iterator(); it.hasNext();) {
+        for (Iterator<Turdle> it = removals.iterator(); it.hasNext();) {
             turdles.remove(it.next());
+        }
+    }
+
+    private void updateCrumbs() {
+        Set<Crumb> removals = new HashSet<>();
+        for (Iterator it = crumbs.iterator(); it.hasNext();) {
+            Crumb t = (Crumb) it.next();
+            t.age++;
+            double f = (double) (t.age) * 0.005;
+            t.setXr(f);
+            t.setYr(f);
+            t.setZr(f);
+            if (t.age > 10000) {
+                removals.add(t);
+            }
+        }
+        for (Iterator<Crumb> it = removals.iterator(); it.hasNext();) {
+            crumbs.remove(it.next());
         }
     }
     
     
-    
     private void updatePlayers() {
-        Set<Player> playerSet = new HashSet<>(playerMap.keySet());
-            for (Player p : playerSet) {
-                updatePlayerLocation(p);
-                if (p.toggleturdle) {
+        
+        Set<Player> playerSet;
+        synchronized(playerMap) {
+            playerSet = new HashSet<>(playerMap.keySet());
+        }
+        for (Player p : playerSet) {
+            updatePlayerLocation(p);
+            if (p.toggleturdle) {
                 addTurdle(p.getId());
-                }
             }
+            if (p.togglecrumb) {
+                addCrumb(p.getId());
+            }
+        }
         DetectCollisions();
-            for (Player p : playerSet) {
-                if (hitboxHandler.IsHit(p)) {
-                    MoveUndo(p);
-                }
+        for (Player p : playerSet) {
+            if (hitboxHandler.IsHit(p)) {
+                MoveUndo(p);
             }
+        }
         updateTurdles();
+        updateCrumbs();
         sendToAllConnectedSessions(createGamePacket());
-            for (Player p : playerSet) {
-                if (p.moved || true){
-                    JsonObject m = createTerrainMessage(p);
-                    if (m != null) {
-                        sendToSession(playerMap.get(p), m);
-                    }
+        for (Player p : playerSet) {
+            if (p.moved || true){
+                JsonObject m = createTerrainMessage(p);
+                if (m != null) {
+                    sendToSession(playerMap.get(p), m);
                 }
             }
+        }
     }
     
-    public void updatePlayerLocation(Player p) {
+    private void updatePlayerLocation(Player p) {
         double delta = 1.0;
         p.moved = false;
         if (p.forward) {
@@ -474,7 +546,7 @@ public class RocketHandler {
             p.MoveRight(delta);
         }        
         // Terrain.
-        float elevation = terrainManager.GetHeight((float) p.getX(), (float) p.getZ());
+        double elevation = terrainManager.GetHeight((double) p.getX(), (double) p.getZ());
         p.setY((double) elevation + 1.0);
         
     }
@@ -503,7 +575,10 @@ public class RocketHandler {
     
     private void sendToAllConnectedSessions(JsonObject message) {
         if (message == null) return;
-        Set<Session> sessionSet = new HashSet<>(sessions.keySet());
+        Set<Session> sessionSet;
+        synchronized (playerMap) {
+          sessionSet = new HashSet<>(playerMap.values());
+        }
         for (Session session : sessionSet) {
                 /*Severe:   Exception in thread "Timer-2"
 Severe:   java.util.ConcurrentModificationException

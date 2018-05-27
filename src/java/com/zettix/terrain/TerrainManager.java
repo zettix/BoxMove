@@ -9,11 +9,11 @@ package com.zettix.terrain;
 //   Serve terrain tiles based on location.
 //
 // Resources: textures of form image_x_y.jpg for tile x, y
-//            float data of form data_x_y.dat for tile x, y
+//            double data of form data_x_y.dat for tile x, y
 // Output: for given geometric point P, return some data with geometry and texture from resources.
 //          The texture is for the client.
 // Load(): load resources.
-// List<names> getTilesForPoint(float x, float y);
+// List<names> getTilesForPoint(double x, double y);
 //  be lazy.  Do not load unless asked.
 
 import com.zettix.rocketsocket.RocketConstants;
@@ -50,27 +50,29 @@ public final class TerrainManager {
    private final Map<String, Tile> tiles = new HashMap<>();
    private final Map<String, String> datapaths = new HashMap<>();
    private final Queue<String> tileQueue = new LinkedList<>();
-   private final float x = 0.0f;
-   private final float y = 0.0f;
-   private final float z = 0.0f;
-   private final float xDim;
-   private final float yDim;
+   private final double xRoot = 0.0f;
+   private final double yRoot = 0.0f;
+   private final double zRoot = 0.0f;
+   private final double xDim;
+   private final double yDim;
    private int xTileCount = 0;
    private int yTileCount = 0;
-   private float xTileWidth = 0.0f;
-   private float yTileWidth = 0.0f;
-   private float xTilesPerDim = 0.0f;
-   private float yTilesPerDim = 0.0f;
+   private double xTileWidth = 0.0f;
+   private double yTileWidth = 0.0f;
+   private double xTilesPerDim = 0.0f;
+   private double yTilesPerDim = 0.0f;
    private DataBaseHandler dataBaseHandler;
-   private final int maxTiles = 1056;  // tune this.
+   private final int maxTiles = 127;  // tune this.
+   private int toFree;
    
    public TerrainManager() {
-       this(100.0f, 100.0f);
+       this(100000.0f, 100000.0f);  // dimensions in world space (x, y) actually set in RocketHandler.
    }
    
    public <E extends Number> TerrainManager(E x, E y) {
        this.xDim = Float.parseFloat(x.toString());
        this.yDim = Float.parseFloat(y.toString());
+       toFree = maxTiles / 8;
        SoftLoad();
    }
 
@@ -155,10 +157,12 @@ public final class TerrainManager {
     */
     xTileCount = dx;
     yTileCount = dy;
-    xTileWidth = (float) xDim / (float) (xTileCount); // start w/ 0
-    yTileWidth = (float) yDim / (float) (yTileCount); // start w/ 0
-    xTilesPerDim =  (xTileCount) / (xDim + x);
-    yTilesPerDim =  (yTileCount) / (yDim + y);
+    xTileWidth = (double) xDim / (double) (xTileCount); // start w/ 0
+    yTileWidth = (double) yDim / (double) (yTileCount); // start w/ 0
+    //xTilesPerDim =  (xTileCount) / (xDim + xRoot);
+    //yTilesPerDim =  (yTileCount) / (yDim + yRoot);
+    xTilesPerDim =  (double) (xTileCount) / (double) (xDim);
+    yTilesPerDim =  (double) (yTileCount) / (double) (yDim);
     System.out.println(GetStatus());
   }
    
@@ -181,9 +185,9 @@ public final class TerrainManager {
 
     int numTiles = datapaths.size();
     if (numTiles > maxTiles) {
-        FreeTiles(25);
+        FreeTiles(toFree);
     }
-    System.out.println("Full load of " + tilename + " For a toal of tiles: " + numTiles);
+    System.out.println("Full load of " + tilename + " For a total of tiles: " + numTiles);
     String path;
     if (datapaths.containsKey(tilename)) {
       path = datapaths.get(tilename);
@@ -196,10 +200,10 @@ public final class TerrainManager {
     if (m.matches() == true)  {
       int px = Integer.parseInt(m.group(1));
       int py = Integer.parseInt(m.group(2));
-      float xx = (float) (px) * xTileWidth + x;
-      float yy = (float) (py) * yTileWidth + y;
-      //  public Tile(float x, float y, float z, float rx, float ry, int c,
-      //        String url, String name, float[] indata)
+      double xx = (double) (px) * xTileWidth + xRoot;
+      double yy = (double) (py) * yTileWidth + yRoot;
+      //  public Tile(double x, double y, double z, double rx, double ry, int c,
+      //        String url, String name, double[] indata)
       //String url = String.format("/BoxMove/images/image_%d_%d.jpg", px, py);
       // With the database endpoint:
       //     localhost:8080/BoxMove/ImageServelet?image=image_0_9.jpg
@@ -215,11 +219,12 @@ public final class TerrainManager {
         int count = f.readInt();
         int unusedYcount = f.readInt();
         // System.out.println("Loading tile: " + tilename + " c: " + count);
-        float[] d = new float[count * count];
+        double[] d = new double[count * count];
         for (int j = 0; j < count * count; j++) {
             // Important change.  Database is now int16s.
-            d[j] = ((float) f.readShort()) * 0.005f;
-            // d[j] = (float) f.readFloat() * 0.9f;  // scaled down?
+            d[j] = ((double) f.readShort()) * .9f;
+            
+            // d[j] = (double) f.readFloat() * 0.9f;  // scaled down?
         }
         /* System.out.println("  xx:" + xx +
                            "\n  yy:" + yy +
@@ -230,7 +235,7 @@ public final class TerrainManager {
                            "\n  url:" + url +
                            "\n  tilename:" + tilename +
                            "\n  d:" + Arrays.toString(d)); */
-        Tile t = new Tile(xx, yy, z, xTileWidth, yTileWidth, count, url,
+        Tile t = new Tile(xx, yy, zRoot, xTileWidth, yTileWidth, count, url,
                           tilename, d);
         tiles.put(tilename, t);
         tileQueue.add(tilename);
@@ -243,19 +248,19 @@ public final class TerrainManager {
     return null;
   }
 
-  public String GetTileName(float xi, float yi) {
+  public String GetTileName(double xi, double yi) {
     // validate
-    if (x + xi < 0.0 || y + yi < 0.0 || x + xi > xDim || y + yi > yDim ) {
+    if ( (xi - xRoot) < 0.0 || (yi - yRoot)  < 0.0 || (xi - xRoot) > xDim || (yi - yRoot) > yDim ) {
       return null;
     }
-    float xx = (float) (xi + x) * xTilesPerDim;
-    float yy = (float) (yi + y) * yTilesPerDim;
+    double xx = (double) (xi - xRoot) * xTilesPerDim;
+    double yy = (double) (yi - yRoot) * yTilesPerDim;
     int tx = (int) xx;
     int ty = (int) yy;
     return GetShortName(tx, ty);
   }
     
-  public Tile GetTile(float xi, float yi) {
+  public Tile GetTile(double xi, double yi) {
     // System.out.println("Getting tile at: " + xi +  ", " + yi);
     String name =  GetTileName(xi, yi);
     // System.out.println("name" + name);
@@ -282,7 +287,7 @@ public final class TerrainManager {
     }
   }
 
-  public float GetHeight(float xi, float yi) {
+  public double GetHeight(double xi, double yi) {
     Tile t = GetTile(xi, yi);
     if (null == t) {
         return 0.0f;
@@ -290,19 +295,20 @@ public final class TerrainManager {
     return t.GetHeight(xi, yi);
   }
 
-  public List<String> GetTileNamesFor(float xi, float yi, int radius) {
+  public List<String> GetTileNamesFor(double xi, double yi, int radius) {
     // validate
     List<String> names = new ArrayList<>();
-    if (x + xi < 0.0 || y + yi < 0.0 || x + xi > xDim || y + yi > yDim
+    if (xRoot + xi < 0.0 || yRoot + yi < 0.0 || xRoot + xi > xDim || yRoot + yi > yDim
         || radius < 1) {
       return names;
     }
-    float xx = (float) (xi + x) * xTilesPerDim;
-    float yy = (float) (yi + y) * yTilesPerDim;
+    double xx = (double) (xi + xRoot) * xTilesPerDim;
+    double yy = (double) (yi + yRoot) * yTilesPerDim;
     int tx = (int) xx;
     int ty = (int) yy;
     for (int j = -radius + 1 ; j < radius ; j++) {
       for (int i = -radius + 1 ; i < radius ; i++) {
+        if ((i * i) + (j * j) > (radius * radius)) continue;
         String tilename = GetShortName(tx + i, ty + j);
         if (tilename != null) {
             names.add(tilename);
@@ -318,10 +324,10 @@ public final class TerrainManager {
     sb.append("Terrain Server, at your service!\n")
         .append("\n")
         .append("X pos: ")
-        .append(x)
+        .append(xRoot)
         .append(nn)
-        .append("Y pos: " + y + nn)
-        .append("Z pos: " + z + nn)
+        .append("Y pos: " + yRoot + nn)
+        .append("Z pos: " + zRoot + nn)
         .append("xTileCount: " + xTileCount + nn)
         .append("yTileCount: " + yTileCount + nn)
         .append("xDim: " + xDim + nn)
@@ -356,9 +362,9 @@ public final class TerrainManager {
       System.out.print("Here he is: " + t);
     }
     System.out.println(ts.GetStatus());
-      for (float f = 0.0f; f < 9.0f; f += .10f) {
-      float ix = f * 1.0f;
-      float iy = f * .4f;
+      for (double f = 0.0f; f < 9.0f; f += .10f) {
+      double ix = f * 1.0f;
+      double iy = f * .4f;
       System.out.println("Traviling to " + ix + ", " + iy);
       System.out.println("Height: " + ts.GetHeight(ix, iy));
     }

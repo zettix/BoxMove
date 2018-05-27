@@ -22,11 +22,12 @@ console.log("Main init");
 var playerManager = new tankette.PlayerManager("rocket1opt", scene);
 console.log("playerManger is done");
 var turdleManager = new tankette.TurdleManager("rocket1opt", scene);
+var crumbManager = new tankette.CrumbManager("NoModel", scene);
 var dotManager = new tankette.DotManager("rocket1opt", scene);
 var terrainManager = new tankette.TerrainManager(scene);
 console.log("turdlemanager is done too!=) happy");
 console.log("Turdle manager:" + turdleManager);
-
+console.log("Crumb manager:" + crumbManager);
 console.log("Player Manager: " + playerManager);
 console.log("Terrain Manager: " + terrainManager);
 
@@ -101,6 +102,7 @@ var Update = function() {
       console.log("X: " + chasecam.target.group.position.x + " Y: " + chasecam.target.group.position.y +  " Z: " + chasecam.target.group.position.z);
       console.log("Players: " + playerManager.NumPlayers());
       console.log("Turdles: " + turdleManager.NumTurdles());
+      console.log("Crumbs: " + crumbManager.NumCrumbs());
       console.log("Terrain: " + terrainManager.Summary());
       console.log("Wireframe: " + use_wireframe);
       pushBox();

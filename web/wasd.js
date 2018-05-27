@@ -35,6 +35,7 @@ WASD.Controls = function(object , domElement) {
    this.b3_down = false;
    this.toggleCam = false;
    this.toggleTurdle = false;
+   this.toggleCrumb = false;
    this.toggleWireFrame = false;
    
    // mouse screen interface:
@@ -138,6 +139,7 @@ WASD.Controls = function(object , domElement) {
     this.moveRight = false;
     this.toggleCam = false;
     this.toggleTurdle = false;
+    this.toggleCrumb = false;
   };
 
   this.onMouseMove = function(event) {
@@ -196,6 +198,7 @@ Key Code Table
       case 68: /*D*/ this.moveRight = value; break;
       case 67: /*C*/ this.toggleCam = value; break;
       case 84: /*T*/ this.toggleTurdle = value; break;
+      case 70: /*F*/ this.toggleCrumb = value; break;
       case 88: /*X*/ this.toggleWireFrame = value; break;
       default: break;
     }

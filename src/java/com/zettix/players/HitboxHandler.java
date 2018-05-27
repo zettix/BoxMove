@@ -8,6 +8,7 @@ package com.zettix.players;
 import com.zettix.graphics.gjkj.util.M4;
 import com.zettix.graphics.gjkj.util.V3;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,7 +20,7 @@ import java.util.Set;
  */
 public class HitboxHandler {
     
-    private final HashMap playerHitboxes = new HashMap<>();
+    private final HashMap<String, Hitbox> playerHitboxes = new HashMap<>();
     public Set<Dot> dots = new HashSet<>();
     
     public void AddPlayer(Player p) {
@@ -33,15 +34,13 @@ public class HitboxHandler {
     
     public String GetHits() {
         StringBuilder out = new StringBuilder();
-        Set keyset = playerHitboxes.keySet();
-        List keylist = new ArrayList(keyset);
-        int listsize = keylist.size();
-        
+        Set<String> keyset = playerHitboxes.keySet();
         out.append("HitboxHandler: ");
         // for now clear since lists set up.
-        for (int i = 0; i < listsize; i++) {
-            Hitbox h = (Hitbox) playerHitboxes.get(keylist.get(i));
-            out.append(i);
+        int i = 0;
+        for (String key : keyset) {
+            Hitbox h = (Hitbox) playerHitboxes.get(key);
+            out.append(i++);
             out.append(" ");
             if (h.is_hit) {
                 out.append("H");
@@ -76,8 +75,8 @@ public class HitboxHandler {
         // meaning this can get out of hand fast.  easiest is to have two
         // indexes into the map, but I have to put the keys into a list
         // first then go 1..n+2..n,
-        Set keyset = playerHitboxes.keySet();
-        List keylist = new ArrayList(keyset);
+        Set<String> keyset = playerHitboxes.keySet();
+        List<String> keylist = new ArrayList<>(keyset);
         int listsize = keylist.size();
         
         StringBuilder out = new StringBuilder();

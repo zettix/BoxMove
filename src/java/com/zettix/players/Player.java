@@ -39,7 +39,7 @@ public class Player {
     public void setYr(double f) {  this.yr = f;}
     public void setZr(double f) {  this.zr = f;}
     public void setId(String s) { this.id = s;}
-    public boolean forward, back, left, right, moved, toggleturdle;
+    public boolean forward, back, left, right, moved, toggleturdle, togglecrumb;
     public int movecount;
     public List<String> terrain = null;
     
@@ -88,6 +88,7 @@ public class Player {
         right = false;
         moved = false;
         toggleturdle = false;
+        togglecrumb = false;
         movecount = 0;
     }
     
